@@ -64,11 +64,13 @@ Recommended: Use least privilege principle in production and define specific res
 📦 5. Environment Variables
 Set the following Lambda environment variables as needed:
 
-Variable Name	Description
-DELETE_PASSWORD	Password required for delete confirmation UI
-REGION	AWS region (e.g., us-east-1)
-SENDER_EMAIL	Verified sender email in Amazon SES
-RECIPIENT_EMAILS	Comma-separated verified emails for report
+  Variable Name	              Description  
+           
+
+DELETE_PASSWORD	        Password required for delete confirmation UI
+REGION	                AWS region (e.g., us-east-1)
+SENDER_EMAIL	          Verified sender email in Amazon SES
+RECIPIENT_EMAILS	      Comma-separated verified emails for report
 
 🔄 6. Deployment Methods
 You can deploy using:
@@ -80,8 +82,9 @@ You can deploy using:
 ✅ GitHub Actions (CI/CD - optional)
 
 🧪 7. Testing Tools
-Tool	Use-Case
-Postman	To test API Gateway GET/POST endpoints
-CloudWatch Logs	To validate Lambda execution output
-AWS Console	For manually triggering and observing
-SES Sandbox	For initial email testing (must verify emails)
+
+Tool	                  Use-Case
+Postman	          To test API Gateway GET/POST endpoints
+CloudWatch        Logs	To validate Lambda execution output
+AWS Console     	For manually triggering and observing
+SES Sandbox	      For initial email testing (must verify emails)
