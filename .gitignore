@@ -1,1 +1,66 @@
-# Placeholder for .gitignore
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# AWS credential files (DO NOT COMMIT!)
+.aws/
+*.pem
+*.key
+*.crt
+
+# Python virtual environments
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# AWS SAM build artifacts
+.aws-sam/
+
+# Lambda deployment packages
+*.zip
+*.tar.gz
+
+# VSCode / IDE configs
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# MacOS / Windows files
+.DS_Store
+Thumbs.db
+
+# Logs and temp files
+*.log
+*.bak
+*.tmp
+nohup.out
+
+# Environment variables and secrets
+.env
+.env.*
+*.secrets
+config.json # If you store secrets here, else comment this line
+
+# Python test output
+.coverage
+.tox/
+.pytest_cache/
+htmlcov/
+
+# Jupyter notebook checkpoints
+.ipynb_checkpoints/
+
+# Ignore compiled HTML or UI generated pages
+static/
+build/
+dist/
+node_modules/
+
+# Ignore SES sandbox test outputs
+ses_test_emails/
+
