@@ -1,3 +1,4 @@
+<img width="1920" height="1080" alt="Your paragraph text (1)" src="https://github.com/user-attachments/assets/3ac065db-fe63-47d5-908e-5ea04245c39c" />
 # 🌩️ Cloud Immunity System – AWS Resource Tracker & Auto-Cleanup
 
 > A serverless, secure, and cost-effective AWS automation tool to **scan**, **report**, and **clean up** unused cloud resources.
@@ -157,3 +158,6 @@ Stop Password Verification :
 
 Delete Password Verification :
 ![WhatsApp Image 2025-08-02 at 12 18 08_0e4b1098](https://github.com/user-attachments/assets/c9f10eab-3258-45a9-940f-f4d7be33345a)
+![WhatsApp Image 2025-08-04 at 09 47 16_3b98298f](https://github.com/user-attachments/assets/5f5553d7-2061-4a5c-8087-708f743f3d26)
+![WhatsApp Image 2025-08-02 at 12 17 51_0cf2794d](https://github.com/user-attachments/assets/4fabaa17-eb1a-41ff-bfb6-9e45b7ed1591)
+![WhatsApp Image 2025-08-02 at 12 18 11_b0537c2f](https://github.com/user-attachments/assets/9a701295-95cf-4459-8751-79f94720ad97)
