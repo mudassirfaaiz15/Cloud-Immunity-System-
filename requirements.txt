@@ -1,1 +1,87 @@
 # Placeholder for requirements.txt
+✅ Project Requirements
+This section lists all the requirements needed to deploy, configure, and run the Cloud Immunity System – an AWS-native serverless project for tracking and cleaning up unused resources securely.
+
+🖥️ 1. Prerequisites
+Ensure the following before starting:
+
+✅ An active AWS account with sufficient IAM permissions.
+
+✅ Verified email addresses in Amazon SES (for sending reports).
+
+✅ AWS region with services enabled (e.g., us-east-1).
+
+✅ Basic familiarity with Python, AWS Console, and Boto3.
+
+⚙️ 2. AWS Services Used
+The following AWS services are used (most covered under the Free Tier):
+
+Service	Purpose
+AWS Lambda	Core logic: scanning, password check, and resource deletion
+Amazon SES	Send daily/weekly HTML email reports with resource info & actions
+Amazon EC2	To detect and manage idle EC2 instances
+Amazon RDS	To detect and stop/delete inactive RDS instances
+Amazon S3	To identify and delete empty/inactive S3 buckets
+Elastic IPs	To release unattached Elastic IPs
+EventBridge	Trigger scanning Lambda on a scheduled basis
+API Gateway	Frontend to access delete/stop endpoints securely
+IAM Roles/Policies	Permissions for Lambda functions to interact with AWS services
+CloudWatch Logs	Logging Lambda actions and events for auditing
+
+💻 3. Software & Tools Required
+Make sure the following are installed locally for testing or deployment:
+
+Tool	Version	Purpose
+Python	3.8 or above	Lambda function logic
+Boto3	Latest	AWS SDK for interacting with services
+AWS CLI	v2.x	Command-line deployment and testing
+SAM CLI (optional)	Latest	For packaging & deploying serverless apps
+VS Code / PyCharm	Any	Python code editing & debugging
+Postman / Browser	Any	Testing API Gateway endpoints
+
+🔐 4. IAM Permissions Required
+The following permissions are required for the IAM Role attached to the Lambda functions:
+
+json
+Copy
+Edit
+{
+  "Effect": "Allow",
+  "Action": [
+    "ec2:*",
+    "s3:*",
+    "rds:*",
+    "lambda:*",
+    "ses:SendEmail",
+    "cloudwatch:*",
+    "logs:*",
+    "iam:PassRole"
+  ],
+  "Resource": "*"
+}
+Recommended: Use least privilege principle in production and define specific resource ARNs.
+
+📦 5. Environment Variables
+Set the following Lambda environment variables as needed:
+
+Variable Name	Description
+DELETE_PASSWORD	Password required for delete confirmation UI
+REGION	AWS region (e.g., us-east-1)
+SENDER_EMAIL	Verified sender email in Amazon SES
+RECIPIENT_EMAILS	Comma-separated verified emails for report
+
+🔄 6. Deployment Methods
+You can deploy using:
+
+✅ AWS Console (manual setup)
+
+✅ AWS SAM or CloudFormation for IaC deployment
+
+✅ GitHub Actions (CI/CD - optional)
+
+🧪 7. Testing Tools
+Tool	Use-Case
+Postman	To test API Gateway GET/POST endpoints
+CloudWatch Logs	To validate Lambda execution output
+AWS Console	For manually triggering and observing
+SES Sandbox	For initial email testing (must verify emails)
