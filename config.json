@@ -1,1 +1,338 @@
 # Placeholder for config.json
+
+CODE: the given code is for the Scanner function for scanning and sending email. 
+
+import boto3 
+import json 
+from datetime import datetime 
+from collections import defaultdict 
+# Initialize AWS clients 
+sts = boto3.client('sts') 
+iam = boto3.client('iam') 
+cloudtrail = boto3.client('cloudtrail') 
+ec2_clients = {} 
+s3 = boto3.client('s3')  # Global service 
+lambda_client = boto3.client('lambda') 
+rds_clients = {} 
+autoscaling_clients = {} 
+ses = boto3.client('ses') 
+# Configuration 
+SENDER = "golipavan888@gmail.com" 
+RECIPIENTS = ["golipavan888@gmail.com"] 
+CHARSET = "UTF-8" 
+API_GATEWAY_BASE = "https://fxm1uc7f22.execute-api.us-east
+1.amazonaws.com/prod" 
+ROOT_USER_ID = "root" 
+TARGET_REGION = "us-east-1" 
+ 
+AWS_EMOJIS = { 
+    'EC2 Instance': '🖥', 
+    'S3 Bucket': '🗄', 
+    'IAM User': ' ', 
+    'Lambda Function': 'λ', 
+    'RDS Instance': '🗃', 
+    'Auto Scaling Group': ' ', 
+    'CloudWatch Alarm': ' ' 
+} 
+ 
+ 
+def get_aws_emoji(resource_type): 
+    return AWS_EMOJIS.get(resource_type, ' ') 
+ 
+ 
+def get_console_link(resource_type, resource_id, region='us-east-1'): 
+    base = f"https://{region}.console.aws.amazon.com" 
+    links = { 
+        'EC2 Instance': 
+f"{base}/ec2/v2/home?region={region}#InstanceDetails:instanceId={resource_id}", 
+        'S3 Bucket': f"{base}/s3/buckets/{resource_id}", 
+        'IAM User': f"{base}/iamv2/home#/users/details/{resource_id}", 
+        'Lambda Function': 
+f"{base}/lambda/home?region={region}#/functions/{resource_id}", 
+        'RDS Instance': f"{base}/rds/home?region={region}#database:id={resource_id};", 
+        'Auto Scaling Group': 
+f"{base}/ec2/autoscaling/home?region={region}#/details/{resource_id}", 
+        'CloudWatch Alarm': 
+f"{base}/cloudwatch/home?region={region}#alarmsV2:alarm/{resource_id}" 
+    } 
+    return links.get(resource_type, f"{base}/console/home") 
+ 
+ 
+def get_iam_users(): 
+    users = [] 
+    paginator = iam.get_paginator('list_users') 
+    For page in paginator.paginate(): 
+        users.extend(page.get('Users', [])) 
+    return users 
+ 
+ 
+def generate_html_table(title, resources, api_base): 
+    if not resources: 
+        return f"<p>No resources found for {title.lower()}.</p>" 
+    rows = "" 
+    for r in resources: 
+        emoji = get_aws_emoji(r['ResourceType']) 
+        status_icon = " " if r['Status'] == 'active' else " " 
+        region = r.get('Region', 'N/A') 
+ 
+        stop_link = 
+f"{api_base}/stop?resourceId={r['ResourceId']}&type={r['ResourceType']}&region={region
+ }" 
+        delete_link = 
+f"{api_base}/delete?resourceId={r['ResourceId']}&type={r['ResourceType']}&region={regio
+ n}" 
+ 
+        actions = "" 
+        if 'Stop' in r['Actions']: 
+            actions += f'<a href="{stop_link}" class="action-btn">Stop</a> ' 
+        if 'Delete' in r['Actions']: 
+            actions += f'<a href="{delete_link}" class="action-btn">Delete</a>' 
+ 
+        rows += f""" 
+            <tr> 
+                <td>{emoji} {r['ResourceType']}</td> 
+                <td>{r['ResourceId']}</td> 
+                <td>{region}</td> 
+                <td>{status_icon} {r['Status'].capitalize()}</td> 
+                <td>{r.get('CreationTime', 'N/A')}</td> 
+                <td>{r.get('AccountId', 'N/A')}</td> 
+                <td>{r.get('Creator', 'N/A')}</td> 
+                <td>{actions}</td> 
+            </tr>""" 
+ 
+    return f""" 
+    <h2>{title}</h2> 
+    <table border="1" cellpadding="5" cellspacing="0" style="border-collapse: collapse; 
+width: 100%; font-family: Arial, sans-serif;"> 
+      <thead style="background-color:#D0E4F7; color:#000;"> 
+        <tr> 
+          <th>Resource Type</th> 
+          <th>Resource ID</th> 
+          <th>Region</th> 
+          <th>Status</th> 
+          <th>Created</th> 
+          <th>Account ID</th> 
+          <th>Creator</th> 
+          <th>Actions</th> 
+        </tr> 
+      </thead> 
+      <tbody> 
+        {rows} 
+      </tbody> 
+    </table> 
+    """ 
+ 
+ 
+def lambda_handler(event, context): 
+    try: 
+        account_id = sts.get_caller_identity()['Account'] 
+        now = datetime.utcnow() 
+ 
+        # Prepare resources containers 
+        root_resources = [] 
+        user_resources = defaultdict(list) 
+ 
+        # Add root IAM user info manually 
+        root_resources.append({ 
+            'ResourceType': 'IAM User', 
+            'ResourceId': 'root', 
+            'Status': 'active', 
+            'CreationTime': 'N/A', 
+            'AccountId': account_id, 
+            'Creator': ROOT_USER_ID, 
+            'Region': 'global', 
+            'Actions': [] 
+        }) 
+ 
+        # Get IAM users (global service) 
+        iam_users = get_iam_users() 
+        for u in iam_users: 
+            root_resources.append({ 
+                'ResourceType': 'IAM User', 
+                'ResourceId': u['UserName'], 
+                'Status': 'active', 
+                'CreationTime': u['CreateDate'].strftime('%Y-%m-%d %H:%M:%S') if 
+u.get('CreateDate') else 'N/A', 
+                'AccountId': account_id, 
+                'Creator': u['UserName'], 
+                'Region': 'global', 
+                'Actions': [] 
+            }) 
+ 
+        # Only scan us-east-1 region 
+        region = TARGET_REGION 
+        ec2 = boto3.client('ec2', region_name=region) 
+        s3_client = boto3.client('s3', region_name=region) 
+        rds = boto3.client('rds', region_name=region) 
+        autoscaling = boto3.client('autoscaling', region_name=region) 
+ 
+        # Scan EC2 instances 
+        ec2_resources = [] 
+        reservations = ec2.describe_instances().get('Reservations', []) 
+        for res in reservations: 
+            for inst in res.get('Instances', []): 
+                state = inst['State']['Name'] 
+                status = 'active' if state == 'running' else 'inactive' 
+                creation_time = inst['LaunchTime'].strftime('%Y-%m-%d %H:%M:%S') if 
+inst.get('LaunchTime') else 'N/A' 
+                resource = { 
+                    'ResourceType': 'EC2 Instance', 
+                    'ResourceId': inst['InstanceId'], 
+                    'Status': status, 
+                    'CreationTime': creation_time, 
+                    'AccountId': account_id, 
+                    'Creator': ROOT_USER_ID, 
+                    'Region': region, 
+                    'Actions': ['Stop', 'Delete'] if status == 'active' else ['Delete'] 
+                } 
+                ec2_resources.append(resource) 
+ 
+        # Scan S3 buckets (note: S3 is global, but we will show region as 
+TARGET_REGION) 
+        s3_resources = [] 
+        buckets = s3.list_buckets().get('Buckets', []) 
+        for b in buckets: 
+            s3_resources.append({ 
+                'ResourceType': 'S3 Bucket', 
+                'ResourceId': b['Name'], 
+                'Status': 'active', 
+                'CreationTime': b['CreationDate'].strftime('%Y-%m-%d %H:%M:%S') if 
+b.get('CreationDate') else 'N/A', 
+                'AccountId': account_id, 
+                'Creator': ROOT_USER_ID, 
+                'Region': region, 
+                'Actions': ['Delete'] 
+            }) 
+ 
+        # Scan RDS instances 
+        rds_resources = [] 
+        dbs = rds.describe_db_instances().get('DBInstances', []) 
+        for db in dbs: 
+            db_status = db['DBInstanceStatus'] 
+            status = 'active' if db_status == 'available' else 'inactive' 
+            creation_time = db.get('InstanceCreateTime') 
+            creation_time_str = creation_time.strftime('%Y-%m-%d %H:%M:%S') if 
+creation_time else 'N/A' 
+            resource = { 
+                'ResourceType': 'RDS Instance', 
+                'ResourceId': db['DBInstanceIdentifier'], 
+                'Status': status, 
+                'CreationTime': creation_time_str, 
+                'AccountId': account_id, 
+                'Creator': ROOT_USER_ID, 
+                'Region': region, 
+                'Actions': ['Stop', 'Delete'] if status == 'active' else ['Delete'] 
+            } 
+            rds_resources.append(resource) 
+ 
+        # Scan Auto Scaling groups 
+        asg_resources = [] 
+        asgs = autoscaling.describe_auto_scaling_groups().get('AutoScalingGroups', []) 
+        for asg in asgs: 
+            status = 'active' if asg.get('DesiredCapacity', 0) > 0 else 'inactive' 
+            resource = { 
+                'ResourceType': 'Auto Scaling Group', 
+                'ResourceId': asg['AutoScalingGroupName'], 
+                'Status': status, 
+                'CreationTime': 'N/A', 
+                'AccountId': account_id, 
+                'Creator': ROOT_USER_ID, 
+                'Region': region, 
+                'Actions': [] 
+            } 
+            asg_resources.append(resource) 
+ 
+        # Scan Lambda functions (global service) 
+        lambda_resources = [] 
+        functions = lambda_client.list_functions().get('Functions', []) 
+        for fn in functions: 
+            lambda_resources.append({ 
+                'ResourceType': 'Lambda Function', 
+                'ResourceId': fn['FunctionName'], 
+                'Status': 'active', 
+                'CreationTime': fn.get('LastModified', 'N/A'), 
+                'AccountId': account_id, 
+                'Creator': ROOT_USER_ID, 
+                'Region': 'global', 
+                'Actions': ['Delete'] 
+            }) 
+ 
+        # Collect all resources 
+        root_resources.extend(ec2_resources) 
+        root_resources.extend(s3_resources) 
+        root_resources.extend(rds_resources) 
+        root_resources.extend(asg_resources) 
+        root_resources.extend(lambda_resources) 
+ 
+        # Generate report date 
+        report_date = datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S UTC') 
+ 
+        html_report = f""" 
+        <html> 
+        <head> 
+            <style> 
+                body {{ font-family: Arial, sans-serif; }} 
+                h1, h2 {{ color: #20539B; }} 
+                .action-btn {{ 
+                    background-color: #2f86f6; 
+                    color: white !important; 
+                    padding: 5px 12px; 
+                    text-decoration: none; 
+                    font-weight: bold; 
+                    border-radius: 4px; 
+                    margin-right: 5px; 
+                    display: inline-block; 
+                }} 
+                .action-btn:hover {{ 
+                    background-color: #1a5ed4; 
+                }} 
+                table {{ 
+                    border-collapse: collapse; 
+                    width: 100%; 
+                    margin-bottom: 20px; 
+                }} 
+                th, td {{ 
+                    border: 1px solid #ccc; 
+                    padding: 4px 8px; 
+                    text-align: left; 
+                    vertical-align: top; 
+                }} 
+                thead tr {{ 
+                    background-color: #D0E4F7; 
+                }} 
+            </style> 
+        </head> 
+        <body> 
+            <h1>AWS Cloud Inventory Report</h1> 
+            <p>Generated at: {report_date}</p> 
+            {generate_html_table("All Resources in us-east-1 & IAM Users", root_resources, 
+API_GATEWAY_BASE)} 
+            <footer style="margin-top:50px; font-size: small; color: #666;"> 
+                Generated by Cloud Immunity System 
+            </footer> 
+        </body> 
+        </html> 
+        """ 
+ 
+        # Send email via SES 
+        ses.send_email( 
+            Source=SENDER, 
+            Destination={'ToAddresses': RECIPIENTS}, 
+            Message={ 
+                'Subject': {'Data': f'AWS Inventory Report {report_date}', 'Charset': 
+CHARSET}, 
+                'Body': {'Html': {'Data': html_report, 'Charset': CHARSET}} 
+            } 
+        ) 
+ 
+        return { 
+            'statusCode': 200, 
+            'body': f"Report sent successfully at {report_date}" 
+        } 
+ 
+    except Exception as e: 
+        print(f"Error occurred: {e}") 
+        return { 
+            'statusCode': 500, 
+'body': f"Failed to generate report: {str(e)}" 
+}
