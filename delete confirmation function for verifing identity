@@ -1,0 +1,219 @@
+def lambda_handler(event, context): 
+# Fetch resourceId and resourceType from query parameters 
+params = event.get('queryStringParameters') or {} 
+resource_id = params.get('resourceId', 'Unknown') 
+resource_type = params.get('type', 'Unknown') 
+# HTML content as a Python f-string 
+# Note: CSS curly braces are doubled {{ and }} to escape them in f-string 
+html_content = f"""<!DOCTYPE html> 
+<html lang="en"> 
+<head> 
+  <meta charset="UTF-8" /> 
+  <meta name="viewport" content="width=device-width, initial-scale=1" /> 
+  <title>Confirm Resource Deletion</title> 
+  <style> 
+    /* Reset & base */ 
+    * {{ 
+      box-sizing: border-box; 
+    }} 
+    body {{ 
+      margin: 0; 
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+      background: #f4f6f8; 
+      color: #333; 
+      display: flex; 
+      justify-content: center; 
+      align-items: center; 
+      min-height: 100vh; 
+      padding: 20px; 
+    }} 
+    /* Container */ 
+    .container {{ 
+      background: white; 
+      max-width: 480px; 
+      width: 100%; 
+      padding: 28px 36px; 
+      border-radius: 10px; 
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1); 
+      animation: fadeIn 0.3s ease forwards; 
+    }} 
+    @keyframes fadeIn {{ 
+      from {{ opacity: 0; transform: translateY(15px); }} 
+      to {{ opacity: 1; transform: translateY(0); }} 
+    }} 
+    h2 {{ 
+      color: #e53e3e; 
+      margin-bottom: 18px; 
+      text-align: center; 
+      font-weight: 700; 
+    }} 
+     
+    p.confirm-msg {{ 
+      font-size: 1rem; 
+      margin-bottom: 20px; 
+      text-align: center; 
+      color: #555; 
+    }} 
+    ul.resource-info {{ 
+      background: #f7fafc; 
+      border: 1px solid #e2e8f0; 
+      border-radius: 8px; 
+      padding: 16px 20px; 
+      list-style: none; 
+      margin-bottom: 24px; 
+      box-shadow: inset 0 0 5px rgba(0,0,0,0.03); 
+      font-size: 0.95rem; 
+      color: #2d3748; 
+    }} 
+    ul.resource-info li {{ 
+      margin-bottom: 8px; 
+    }} 
+    label {{ 
+      display: block; 
+      font-weight: 600; 
+      margin-bottom: 8px; 
+      color: #4a5568; 
+    }} 
+    input[type="password"] {{ 
+      width: 100%; 
+      padding: 12px 15px; 
+      border-radius: 6px; 
+      border: 1.5px solid #cbd5e0; 
+      font-size: 1rem; 
+      transition: border-color 0.2s ease; 
+    }} 
+    input[type="password"]:focus {{ 
+      border-color: #3182ce; 
+      outline: none; 
+    }} 
+    button {{ 
+      width: 100%; 
+      padding: 14px; 
+      background: #e53e3e; 
+      border: none; 
+      color: white; 
+      font-weight: 700; 
+      font-size: 1rem; 
+      border-radius: 8px; 
+      cursor: pointer; 
+      box-shadow: 0 6px 12px rgba(229,62,62,0.5); 
+      transition: background-color 0.3s ease; 
+    }} 
+    button:disabled {{ 
+      background: #f9caca; 
+      cursor: not-allowed; 
+      box-shadow: none; 
+    }} 
+    button:hover:not(:disabled) {{ 
+      background: #c53030; 
+    }} 
+    .result {{ 
+      margin-top: 20px; 
+      font-weight: 600; 
+      font-size: 1rem; 
+      text-align: center; 
+      min-height: 30px; 
+      border-radius: 6px; 
+      padding: 12px; 
+      display: none; 
+    }} 
+    .result.success {{ 
+      background: #9ae6b4; 
+      color: #22543d; 
+      border: 1px solid #68d391; 
+      display: block; 
+      animation: fadeIn 0.5s ease forwards; 
+    }} 
+    .result.error {{ 
+      background: #fed7d7; 
+      color: #742a2a; 
+      border: 1px solid #f56565; 
+      display: block; 
+      animation: fadeIn 0.5s ease forwards; 
+    }} 
+    /* Responsive */ 
+    @media (max-width: 500px) {{ 
+      .container {{ 
+        padding: 20px 24px; 
+      }} 
+    }} 
+  </style> 
+</head> 
+<body> 
+  <div class="container" role="main" aria-labelledby="pageTitle"> 
+    <h2 id="pageTitle" tabindex="0">Confirm Deletion</h2> 
+    <p class="confirm-msg">Are you sure you want to delete this resource?</p> 
+    <ul class="resource-info" aria-label="Resource Details"> 
+      <li><strong>Resource Type:</strong> {resource_type}</li> 
+      <li><strong>Resource ID:</strong> {resource_id}</li> 
+    </ul> 
+    <form id="deleteForm" method="post" action="/prod/delete" aria
+describedby="formDesc" novalidate> 
+      <!-- Hidden inputs for resource id and type --> 
+      <input type="hidden" name="resourceId" value="{resource_id}"> 
+      <input type="hidden" name="type" value="{resource_type}"> 
+      <label for="password">Enter Password</label> 
+      <input type="password" id="password" name="password" placeholder="Your password" 
+required aria-required="true" autocomplete="off" /> 
+      <button type="submit" id="submitBtn" disabled>Confirm Delete</button> 
+    </form> 
+    <div id="result" class="result" role="alert" aria-live="polite"></div> 
+  </div> 
+  <script> 
+    const passwordInput = document.getElementById('password'); 
+    const submitBtn = document.getElementById('submitBtn'); 
+    const resultDiv = document.getElementById('result'); 
+    const deleteForm = document.getElementById('deleteForm'); 
+    passwordInput.addEventListener('input', () => {{ 
+      submitBtn.disabled = passwordInput.value.trim().length === 0; 
+      resultDiv.style.display = 'none'; 
+      resultDiv.textContent = ''; 
+      resultDiv.className = 'result'; 
+    }}); 
+    deleteForm.addEventListener('submit', async (e) => {{ 
+      e.preventDefault(); 
+      submitBtn.disabled = true; 
+      resultDiv.style.display = 'block'; 
+      resultDiv.textContent = 'Processing...'; 
+      resultDiv.className = 'result'; 
+      const formData = new URLSearchParams(new FormData(deleteForm)).toString(); 
+      try {{ 
+        const response = await fetch(deleteForm.action, {{ 
+          method: 'POST', 
+          headers: {{ 
+            'Content-Type': 'application/x-www-form-urlencoded' 
+          }}, 
+          body: formData 
+        }}); 
+        const text = await response.text(); 
+        if (response.ok) {{ 
+          resultDiv.className = 'result success'; 
+          resultDiv.innerHTML = text; 
+          passwordInput.disabled = true; 
+          submitBtn.disabled = true; 
+        }} else {{ 
+          resultDiv.className = 'result error'; 
+          resultDiv.innerHTML = text; 
+          submitBtn.disabled = false; 
+          passwordInput.focus(); 
+          passwordInput.select(); 
+        }} 
+      }} catch (error) {{ 
+        resultDiv.className = 'result error'; 
+        resultDiv.textContent = 'An unexpected error occurred.'; 
+        submitBtn.disabled = false; 
+      }} 
+    }}); 
+    window.addEventListener('load', () => {{ 
+      passwordInput.focus(); 
+    }}); 
+  </script> 
+</body> 
+</html>""" 
+    return { 
+        'statusCode': 200, 
+        'headers': { 
+            'Content-Type': 'text/html', 
+        }, 
+        'body': html_content 
+}
