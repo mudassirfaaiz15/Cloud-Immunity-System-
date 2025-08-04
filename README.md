@@ -149,5 +149,11 @@ Cloud Immunity System Daily Report
 
 Click links above to manage your cloud cost and cleanup idle resources.
 
+Email Dashboard :
+![WhatsApp Image 2025-08-02 at 12 17 29_6b6fcef7](https://github.com/user-attachments/assets/758da94d-6e5b-4f70-9913-e20ea466df3e)
 
+Stop Password Verification : 
+![WhatsApp Image 2025-08-02 at 12 17 48_4c0d900d](https://github.com/user-attachments/assets/cf6c52d2-b48a-4105-8a40-c4c79e868ffc)
 
+Delete Password Verification :
+![WhatsApp Image 2025-08-02 at 12 18 08_0e4b1098](https://github.com/user-attachments/assets/c9f10eab-3258-45a9-940f-f4d7be33345a)
