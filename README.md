@@ -8,7 +8,7 @@
 
 ---
 
-## 📌 Project Overview
+## 📌 Project Overview 
 
 The **Cloud Immunity System** is designed to help AWS users reduce cloud bills and improve infrastructure hygiene by identifying and optionally removing unused or idle AWS resources such as:
 
